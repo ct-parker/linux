@@ -66,7 +66,7 @@
 #include <asm/mwait.h>
 #include <asm/msr.h>
 
-#define INTEL_IDLE_VERSION "0.4.1"
+#define INTEL_IDLE_VERSION "0.4.2"
 
 static struct cpuidle_driver intel_idle_driver = {
 	.name = "intel_idle",
@@ -124,6 +124,51 @@ static struct cpuidle_state *cpuidle_state_table;
  * which is also the index into the MWAIT hint array.
  * Thus C0 is a dummy.
  */
+static struct cpuidle_state core2_cstates[] = {
+	{
+		.name = "C1",
+		.desc = "MWAIT 0x00",
+		.flags = MWAIT2flg(0x00),
+		.exit_latency = 3,
+		.target_residency = 6,
+		.enter = &intel_idle,
+		.enter_s2idle = intel_idle_s2idle, },
+	{
+		.name = "C1E",
+		.desc = "MWAIT 0x01",
+		.flags = MWAIT2flg(0x01),
+		.exit_latency = 10,
+		.target_residency = 20,
+		.enter = &intel_idle,
+		.enter_s2idle = intel_idle_s2idle, },
+	{
+		.name = "C2E",
+		.desc = "MWAIT 0x11",
+		.flags = MWAIT2flg(0x11),
+		.exit_latency = 40,
+		.target_residency = 100,
+		.enter = &intel_idle,
+		.enter_s2idle = intel_idle_s2idle, },
+	{
+		.name = "C3",
+		.desc = "MWAIT 0x20",
+		.flags = MWAIT2flg(0x20) | CPUIDLE_FLAG_TLB_FLUSHED,
+		.exit_latency = 85,
+		.target_residency = 200,
+		.enter = &intel_idle,
+		.enter_s2idle = intel_idle_s2idle, },
+	{
+		.name = "C4",
+		.desc = "MWAIT 0x30",
+		.flags = MWAIT2flg(0x30) | CPUIDLE_FLAG_TLB_FLUSHED,
+		.exit_latency = 100,
+		.target_residency = 400,
+		.enter = &intel_idle,
+		.enter_s2idle = intel_idle_s2idle, },
+	{
+		.enter = NULL }
+};
+
 static struct cpuidle_state nehalem_cstates[] = {
 	{
 		.name = "C1",
@@ -981,6 +1026,11 @@ static void c1e_promotion_disable(void)
 	wrmsrl(MSR_IA32_POWER_CTL, msr_bits);
 }
 
+static const struct idle_cpu idle_cpu_core2 = {
+	.state_table = core2_cstates,
+	.disable_promotion_to_c1e = false,
+};
+
 static const struct idle_cpu idle_cpu_nehalem = {
 	.state_table = nehalem_cstates,
 	.auto_demotion_disable_flags = NHM_C1_AUTO_DEMOTE | NHM_C3_AUTO_DEMOTE,
@@ -1070,6 +1120,7 @@ static const struct idle_cpu idle_cpu_dnv = {
 	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, (unsigned long)&cpu }
 
 static const struct x86_cpu_id intel_idle_ids[] __initconst = {
+	ICPU(INTEL_FAM6_CORE2_PENRYN,		idle_cpu_core2),
 	ICPU(INTEL_FAM6_NEHALEM_EP,		idle_cpu_nehalem),
 	ICPU(INTEL_FAM6_NEHALEM,		idle_cpu_nehalem),
 	ICPU(INTEL_FAM6_NEHALEM_G,		idle_cpu_nehalem),
